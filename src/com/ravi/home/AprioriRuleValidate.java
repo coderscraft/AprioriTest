@@ -19,7 +19,7 @@ public class AprioriRuleValidate {
 
 	public static void main(String[] args) throws FileNotFoundException {
 		//List<Map<String,String>> models = loadValidationData("/Users/ravirane/Desktop/GMU/Final Data/csv/final_300.csv");
-		List<Map<String,String>> models = loadValidationData("./final_300.csv");
+		List<Map<String,String>> models = loadValidationData("./data.csv");
 		//List<Rule> rules = loadRules("/Users/ravirane/Desktop/GMU/Final Data/rule/rule.txt");
 		List<Rule> rules = loadRules("./rule.txt");
 		if(models.size() > 0) {
