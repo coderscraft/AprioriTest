@@ -11,23 +11,30 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Scanner;
 
 public class AprioriRuleValidate {
 	
 	static String[] headers = {"job","month","duration","pdays","previous","poutcome","empVarRate","consConfIdx","euribor3m","nrEmployed","y"};
+        static String defaultGuess = null;
 
 	public static void main(String[] args) throws FileNotFoundException {
 		//List<Map<String,String>> models = loadValidationData("/Users/ravirane/Desktop/GMU/Final Data/csv/final_300.csv");
 		List<Map<String,String>> models = loadValidationData("./data.csv");
 		//List<Rule> rules = loadRules("/Users/ravirane/Desktop/GMU/Final Data/rule/rule.txt");
 		List<Rule> rules = loadRules("./rule.txt");
+                // ADDITION
+                pickDefaultGuess(rules);
+                // --------
 		if(models.size() > 0) {
 			Map<String, Integer> outcome = validate(models, rules);
-			double TP = outcome.get("TP") >= 0 ? outcome.get("TP") : 0;
-			double TN = outcome.get("TN") >= 0 ? outcome.get("TN") : 0;
-			double FP = outcome.get("FP") >= 0 ? outcome.get("FP") : 0;
-			double FN = outcome.get("FN") >= 0 ? outcome.get("FN") : 0;
+                        // ADDITION
+			double TP = outcome.get("TP") >= 0 ? outcome.get("TP")+1 : 0;
+			double TN = outcome.get("TN") >= 0 ? outcome.get("TN")+1 : 0;
+			double FP = outcome.get("FP") >= 0 ? outcome.get("FP")+1 : 0;
+			double FN = outcome.get("FN") >= 0 ? outcome.get("FN")+1 : 0;
+                        // --------
 			
 			double accuracy = (TP+TN)/(TP+FP+FN+TN);
 			double precision = TP/(TP+FP);
@@ -59,21 +66,45 @@ public class AprioriRuleValidate {
 
 	private static Map<String, Integer> validate(List<Map<String,String>> models, List<Rule> rules) {
 		Map<String, Integer> outcome = new HashMap<String, Integer>();
+                boolean foundRule = false;
 		outcome.put("TP", -1);
 		outcome.put("TN", -1);
 		outcome.put("FP", -1);
 		outcome.put("FN", -1);
 		for(int i = 0; i < models.size(); i++) {
+                        foundRule = false;
 			Map<String,String> model = models.get(i);
 			for(int j = 0; j < rules.size(); j++) {
 				Rule r = rules.get(j);
 				String test = r.verify(model);
 				if(test != null) {
 					outcome.put(test,outcome.get(test) + 1);
+                                        foundRule = true;
 					break;
 				}
 			}
-			
+                        // ADDITION
+                        // Tried all rules, non applied
+                        if (!foundRule) {
+                            String answer = model.get("y");
+                            if(answer.equals("yes")){
+                                // Correct: Yes | Guess: Yes
+                                if(defaultGuess.equals("yes"))
+                                    outcome.put("TP",outcome.get("TP") + 1);
+                                // Correct: Yes | Guess: No
+                                else
+                                    outcome.put("FN",outcome.get("FN") + 1);
+                            }
+                            else {
+                                // Correct: No | Guess: No
+                                if(defaultGuess.equals("no"))
+                                    outcome.put("TN",outcome.get("TN") + 1);
+                                // Correct: No | Guess: Yes
+                                else
+                                    outcome.put("FP",outcome.get("FP") + 1);
+                            }
+                        }
+                        // --------
 		}
 		return outcome;
 	}
@@ -106,6 +137,40 @@ public class AprioriRuleValidate {
 		scanner.close();
 		return rules;
 	}
+        
+        // ADDITION
+        /*
+            Function used to pick a default guess when no rules apply
+        */
+        private static void pickDefaultGuess(List<Rule> rules){
+            int countYes = 0, countNo = 0;
+            
+            // Go through each rule and count yes and no conclusions
+            for(Rule r : rules){
+                if(r.outcome.equals("yes")){
+                    countYes++;
+                }
+                else {
+                    countNo++;
+                }
+            }
+            
+            // If more yes, default guess is no
+            if(countYes > countNo){
+                defaultGuess = "no";
+            }
+            // If more no, default gess is yes
+            else if (countNo > countYes){
+                defaultGuess = "yes";
+            }
+            // If equal, pick a random option
+            else {
+                String[] options = {"yes", "no"};
+                Random r = new Random();
+                defaultGuess = options[r.nextInt(options.length)];
+            }
+        }
+        // --------
 
 	private static List<Map<String,String>> loadValidationData(String string)
 			throws FileNotFoundException {
